@@ -8,18 +8,114 @@
     <h1><%= title %></h1>
     <p>Welcome to <%= title %></p>
     <div id="table">
-      <div>
+      <div id="e-team-wrapper">
         <h2>E-Team</h2>
         <div class="score">
-          1
+          <%= scores.find(score => score.team_name === "e-team").score %>
+        </div>
+        <div class="actions" data-team="e">
+          <div class="increase custom-button" onclick="handleAction(this, 'increase')">+</div>
+          <div class="decrease custom-button" onclick="handleAction(this, 'decrease')">-</div>
         </div>
       </div>
-      <div>
+      <div id="t-team-wrapper">
         <h2>T-Team</h2>
         <div class="score">
-          1
+          <%= scores.find(score => score.team_name === "t-team").score %>
         </div>
+        <div class="actions" data-team="t">
+          <div class="increase custom-button" onclick="handleAction(this, 'increase')">+</div>
+          <div class="decrease custom-button" onclick="handleAction(this, 'decrease')">-</div>
+        </div>
+      </div>
+    </div>
+    <div id="reset">
+      <div id="reset-button" class="custom-button" onclick="resetScore(this)">Reset Score</div>
+      <div id="cheater-section">
+        <img src="https://media1.tenor.com/images/d36230a4aedfe6b297eab4d8e76180c5/tenor.gif?itemid=4902261">
       </div>
     </div>
   </body>
 </html>
+
+<script>
+
+  function resetScore(element) {
+    if (getTotalScore() === 5) {
+      element.style.pointerEvents = 'none';
+      element.style.cursor = 'default';
+      element.innerText = 'Reseting Score'
+      let xhr = new XMLHttpRequest();
+      xhr.open('POST', '/scores');
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          for (let scoreElement of document.getElementsByClassName('score')) {
+            scoreElement.innerText = 0;
+          }
+        }
+        element.innerText = 'Reset Score'
+        element.style.pointerEvents = 'auto';
+        element.style.cursor = 'pointer';
+      };
+
+      xhr.send();
+    }
+    else {
+      displayCheaterSection()
+    }
+  }
+
+  function displayCheaterSection() {
+    const cheaterSection = document.getElementById('cheater-section');
+      cheaterSection.style.display = 'block';
+      setTimeout(() => {
+        cheaterSection.style.display = 'none';
+      }, 5000);
+  }
+
+  function handleAction(element, actionType) {
+    const team = element.parentNode.getAttribute('data-team');
+    const teamId = team === "t" ? "t-team" : "e-team";
+    const teamWrapper = document.getElementById(`${teamId}-wrapper`);
+    const scoreElement = teamWrapper.getElementsByClassName("score")[0];
+    const score = parseInt(scoreElement.innerText);
+    const newScore = actionType === "increase" ? score + 1 : score - 1;
+
+    if (newScore < 0) return;
+
+    if (getTotalScore() + 1 <= new Date().getUTCDay() || (newScore >= 0 && actionType === 'decrease'))
+      actionsApiCall(element, scoreElement, newScore, teamId);
+    else
+      displayCheaterSection();
+
+  }
+
+  function actionsApiCall(element, scoreElement, score, teamId) {
+    element.style.pointerEvents = 'none';
+    element.style.cursor = 'default';
+    let xhr = new XMLHttpRequest();
+    xhr.open('PUT', '/scores');
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        scoreElement.innerText = score;
+      }
+      element.style.pointerEvents = 'auto';
+      element.style.cursor = 'pointer';
+    };
+
+    xhr.send(JSON.stringify({
+      team: teamId,
+      score: score
+    }));
+  }
+
+  function getTotalScore() {
+    let total = 0;
+    for (const scoreElement of document.getElementsByClassName('score')) {
+      total += parseInt(scoreElement.innerText);
+    }
+    return total;
+  }
+</script>
